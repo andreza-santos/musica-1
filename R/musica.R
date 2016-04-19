@@ -40,7 +40,7 @@ decomp = function(x, year_starts = months(0), scales = c(Y1 = '1 year', M6 = '6 
   setnames(R, 'prse', 'DTM')
   R[, DTM := as.IDate(DTM %m+% year_starts)]
   R[, scale_pos := as.IDate(scale_pos %m+% year_starts)]
-  R[, excl:= N < 0.9 * (TS/24)]
+  #R[, excl:= N < 0.9 * (TS/24)]
   copy(R)
 
 }
