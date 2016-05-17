@@ -84,6 +84,19 @@ tscale = function(x, nyears = 30){
 
 }
 
+#' Compare decomposed variables
+#'
+#' @param x List of decomposed variables to be compared
+#' @param compare_to Decomposed variable used as a reference
+#' @param fun Function used for comparison
+#' @param wet_int_only (logical) Should only the wet intervals be considered?
+#' @param wet_int_thr Numeric value specifying the minimum depth to be consider wet
+#' @param exclude_below Some of the intervals might not be of required length, e.g. D10 interval may have less than 10 days available. The \code{exclude_below} argument controls the minimum fraction of the interval that has to be available in order to be considered in the summary statistics.
+#'
+#' @return data.table summarizing the differences
+#' @export compare
+#'
+#' @examples
 compare = function(x, compare_to, fun = mean, wet_int_only = TRUE, wet_int_thr = 0.1, exclude_below = 0.9){
 
   lst = c(x, COMPARE_TO = list(compare_to))
@@ -104,6 +117,18 @@ compare = function(x, compare_to, fun = mean, wet_int_only = TRUE, wet_int_thr =
 
 }
 
+#' Assess the relations between two decomposed variables
+#'
+#' @param x Decomposed object
+#' @param fun Function to sumarize dependence (like \code{cor}, \code{cov})
+#' @param wet_int_only (logical) Should only the wet intervals be considered?
+#' @param wet_int_thr Numeric value specifying the minimum depth to be consider wet
+#' @param exclude_below Some of the intervals might not be of required length, e.g. D10 interval may have less than 10 days available. The \code{exclude_below} argument controls the minimum fraction of the interval that has to be available in order to be considered in the summary statistics.
+#'
+#' @return data.table summarizing the relation
+#' @export vcompare
+#'
+#' @examples
 vcompare = function(x, fun = cor, wet_int_only = TRUE, wet_int_thr = 0.1, exclude_below = 0.9){
 
   lst = x #c(x, COMPARE_TO = list(compare_to))
@@ -129,6 +154,15 @@ vcompare = function(x, fun = cor, wet_int_only = TRUE, wet_int_thr = 0.1, exclud
 
 
 
+#' Convenience function for calculation of quantiles
+#'
+#' @param p Specification of the quantile
+#' @param ... other arguments passed to \code{quantile}
+#'
+#' @return function calculating the p-th quantile
+#' @export Q
+#'
+#' @examples
 Q = function(p, ...){
   function(x)quantile(x, p, ...)
 }
