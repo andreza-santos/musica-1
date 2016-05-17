@@ -13,6 +13,17 @@ rev_dif = function(x, y, variable){
 }
 
 
+#' Decomposition of time-series
+#'
+#' @param x data.table with columns \code{DTM} (date), \code{variable} and \code{value}.
+#' @param year_starts A Period object indicating the start of the year
+#' @param scales The time-scales to be included in output, see Details
+#' @param agg_by Function for specification of the period (season, month) to be included in output, see Details
+#'
+#' @return decomposed data.table
+#' @export decomp
+#'
+#' @examples
 decomp = function(x, year_starts = months(0), scales = c(Y1 = '1 year', M6 = '6 month', M3 = '3 months', M1 = '1 months', D5 = '15 days', D1 = '1 day'), agg_by = quarter){
 
   x = copy(x)
@@ -75,7 +86,7 @@ compare = function(x, compare_to, fun = mean, wet_int_only = TRUE, wet_int_thr =
     } else {
       lst[, .(value = fun(value)), by = .(variable, scale, TS, sub_scale, ID)]
     }
-  cstat = dcast(stat, variable + scale + TS + sub_scale ~ ID)
+  cstat = dcast.data.table(stat, variable + scale + TS + sub_scale ~ ID)
   stat = melt(cstat, measure.vars = names(x), variable.name = 'comp')
   stat[, .(DIF = dif(value, COMPARE_TO, variable[1])), by = .(variable, scale, TS, sub_scale, comp)]
 

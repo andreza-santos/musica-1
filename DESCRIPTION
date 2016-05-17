@@ -8,9 +8,10 @@ Description: More about what it does (maybe more than one line)
 License: What license is it under?
 LazyData: TRUE
 Depends:
-  data.table,
-  magrittr,
-  qmap,
-  lubridate,
-  gridExtra,
-  ggplot2
+    data.table,
+    magrittr,
+    qmap,
+    lubridate,
+    gridExtra,
+    ggplot2
+RoxygenNote: 5.0.1
