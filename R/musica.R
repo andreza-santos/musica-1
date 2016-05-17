@@ -56,6 +56,18 @@ decomp = function(x, year_starts = months(0), scales = c(Y1 = '1 year', M6 = '6 
 
 }
 
+#' Convert temporal scale code to hours
+#'
+#' Interval durations are calculated by the lubridate package.
+#'
+#' @param x Vector of the temporal scale codes
+#' @param nyears Overall number of years - used for conversion of the grand mean
+#'
+#' @return numerical vector of durations in hours
+#' @export tscale
+#'
+#' @examples
+#' tscale('M1')
 tscale = function(x, nyears = 30){
 
   num = suppressWarnings(as.integer(gsub("[^\\d]+", "", x, perl = TRUE)))
