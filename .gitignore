@@ -5,3 +5,5 @@
 musica.Rproj
 readme.Rmd
 testing/*.*
+inst/doc
+paper/

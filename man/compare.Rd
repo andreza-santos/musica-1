@@ -26,4 +26,9 @@ data.table summarizing the differences
 \description{
 Compare decomposed variables
 }
+\examples{
+data(basin_PT)
+dobs = decomp(basin_PT[['obs_ctrl']])
+
+}
 

@@ -2,22 +2,23 @@
 % Please edit documentation in R/musica.R
 \name{tscale}
 \alias{tscale}
-\title{Convert temporal scale code to hours}
+\title{Convert averaging length code to hours}
 \usage{
 tscale(x, nyears = 30)
 }
 \arguments{
-\item{x}{Vector of the temporal scale codes}
+\item{x}{Vector of the averaging period codes}
 
-\item{nyears}{Overall number of years - used for conversion of the grand mean}
+\item{nyears}{Overall number of years - used for conversion of the overall mean}
 }
 \value{
 numerical vector of durations in hours
 }
 \description{
-Interval durations are calculated by the lubridate package.
+Period durations are calculated by the \code{\link{lubridate}} package.
 }
 \examples{
 tscale('M1')
+tscale('G1', nyears = 25)
 }
 

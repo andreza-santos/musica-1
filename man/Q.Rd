@@ -9,7 +9,7 @@ Q(p, ...)
 \arguments{
 \item{p}{Specification of the quantile}
 
-\item{...}{other arguments passed to \code{quantile}}
+\item{...}{other arguments passed to \code{\link{quantile}}}
 }
 \value{
 function calculating the p-th quantile

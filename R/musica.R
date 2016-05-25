@@ -1,12 +1,32 @@
+#' musica - An R package for multiscale climate model assessment
+#'
+#' The package provides functions for flexible assessment of climate model bias and changes at multiple time scales. See documentation for \code{\link{decomp}}, \code{\link{compare}} and \code{\link{vcompare}}.
+#'
+#' @section Package options:
+#' Following option(s) are available:
+#' \describe{
+#'  \item{additive_variables}{At several places the package compares values. The character vector \code{additive_values} specifies for which variables difference should be used for comparison instead of ratio. Defaults to \code{additive_values = "TAS"}. See \code{\link{options}} for setting or examining options.}
+#' }
+#'
+#'
+#' @author Martin Hanel \email{hanel@@fzp.czu.cz}
+#' @references Hanel, M., Kozin, R. (2016) Bias correction for hydrological modelling, submitted.
+#' @docType package
+#' @name musica-package
+NULL
+
+
+options('additive_variables' = 'TAS')
+
 dif = function(x, y, variable){
-  if (variable == 'TAS') return(x-y)
+  if (variable %in% getOption('additive_variables')) return(x-y)
   r = x/y
   r[y==0] = 0
   return(r)
 }
 
 rev_dif = function(x, y, variable){
-  if (variable == 'TAS') return(x+y)
+  if (variable %in% getOption('additive_variables')) return(x+y)
   r = x*y
   #r[y==0] = 0
   return(r)
@@ -15,59 +35,80 @@ rev_dif = function(x, y, variable){
 
 #' Decomposition of time-series
 #'
-#' @param x data.table with columns \code{DTM} (date), \code{variable} and \code{value}.
-#' @param year_starts A Period object indicating the start of the year
-#' @param scales The time-scales to be included in output, see Details
-#' @param agg_by Function for specification of the period (season, month) to be included in output, see Details
+#' Enhance the input data.table with series of averages over the periods specified in the \code{periods} argument.
 #'
-#' @return decomposed data.table
+#' @param x data.table with columns \code{DTM} (date), \code{variable} and \code{value}. Any number of variables are in principle allowed.
+#' @param year_starts A Period object indicating the start of the year, e.g. \code{year_starts = -months(1)} results in climatological seasons
+#' @param periods The periods over which the averages will be calculated, see Details
+#' @param agg_by Function for specification of the period (season, month) to be additionaly included in output, see Details
+#'
+#' @details The original time series in daily time step is decomposed into series of averages ove periods specified in \code{periods} argument using keywords "day", "month", "year" preceded by an integer and a space and optionally followed by "s" (the specification is further passed to \code{cut.Date}, see \code{\link{cut.Date}} for details). The periods must be given in order from longest to shortest, the overall mean is always included (and needs not to be included). Shorter periods are always identified within the closest longer periods, i.e. each shorter period is fully included in exactly one longer period. As a result, the averages may be calculated over shorter periods than specified. This is due to varying length of "month" and "year" periods. The actual length used for averaging is included in the output. To make further assessment of the decomposed objects easier, indicator of period within the year (e.g. quarter or month) as specified by \code{agg_by} argument is included in the output.
+#'
+#'@return data.table with variables:
+#'\describe{
+#'  \item{variable}{factor indicating the variable}
+#'  \item{DTM}{date}
+#'  \item{period}{specification of the averaging length with `D` - day(s), `M` - month(s), `Y` - year(s) and `G1` - the overall mean }
+#'  \item{value}{value of the variable for given averaging length}
+#'  \item{sub_period}{indication of the aggregating scale specified by \code{agg_by} argument}
+#'  \item{period_pos}{average date of the interval}
+#'  \item{N}{real length of the vectors used for calculating averages}
+#'  \item{TS}{averaging length in hours}
+#'}
 #' @export decomp
 #'
 #' @examples
-decomp = function(x, year_starts = months(0), scales = c(Y1 = '1 year', M6 = '6 month', M3 = '3 months', M1 = '1 months', D5 = '15 days', D1 = '1 day'), agg_by = quarter){
+#' data(basin_PT)
+#' str(basin_PT)
+#' basin_PT[['obs_ctrl']]
+#' dobs = decomp(basin_PT[['obs_ctrl']], scales = c('1 year', '1 month', '1 day'))
+decomp = function(x, year_starts = months(0), periods = c('1 year', '6 months', '3 months', '1 month', '15 days', '1 day'), agg_by = quarter){
 
+  if (!all(grepl('year|month|day', periods))) stop("scales argument must be specified using 'year', 'month', 'day' keywords only. See ?decomp for details.")
+  names(periods) = name_scales(periods)
   x = copy(x)
   # shift for arbitrary year start (climatological, hydrological etc.)
   x[, cDTM := as.IDate(DTM %m-% year_starts)]
 
-  for (i in 1:length(scales)){
-    bby = if (i>1) {names(scales)[1:(i-1)]} else {NULL}
-    x[, (names(scales)[i]) := cut(cDTM, breaks = scales[i]), by = bby]#eval(parse(text = bby))]
+  for (i in 1:length(periods)){
+    bby = if (i>1) {names(periods)[1:(i-1)]} else {NULL}
+    x[, (names(periods)[i]) := cut(cDTM, breaks = periods[i]), by = bby]
   }
 
-  wh = names(x)[! names(x) %in% c('DTM', 'cDTM', names(scales))]
+  wh = names(x)[! names(x) %in% c('DTM', 'cDTM', names(periods))]
   x[, G1:= mean(cDTM)]
   mo = melt(x, measure.vars = wh)
 
   R = list()
-  for (i in 0:length(scales)){
-    bby = if (i>0) {names(scales)[i]} else {'G1'}
-    R[[i+1]] = mo[,  .(scale = bby, value = mean(value), sub_scale = unique(agg_by(cDTM)), scale_pos = unique(prse), N = .N), by = .(variable, prse = eval(parse(text = bby)))]
+  for (i in 0:length(periods)){
+    bby = if (i>0) {names(periods)[i]} else {'G1'}
+    R[[i+1]] = mo[,  .(period = bby, value = mean(value), sub_period = unique(agg_by(cDTM)), period_pos = unique(prse), N = .N), by = .(variable, prse = eval(parse(text = bby)))]
 
     }
 
   R = do.call(rbind, R)
-  R[, TS:= tscale(scale)]
+  R[, TS:= tscale(period)]
   setnames(R, 'prse', 'DTM')
   R[, DTM := as.IDate(DTM %m+% year_starts)]
-  R[, scale_pos := as.IDate(scale_pos %m+% year_starts)]
+  R[, period_pos := as.IDate(period_pos %m+% year_starts)] # NEVYHODIT ? DTM == period_pos
   #R[, excl:= N < 0.9 * (TS/24)]
   copy(R)
 
 }
 
-#' Convert temporal scale code to hours
+#' Convert averaging length code to hours
 #'
-#' Interval durations are calculated by the lubridate package.
+#' Period durations are calculated by the \code{\link{lubridate}} package.
 #'
-#' @param x Vector of the temporal scale codes
-#' @param nyears Overall number of years - used for conversion of the grand mean
+#' @param x Vector of the averaging period codes
+#' @param nyears Overall number of years - used for conversion of the overall mean
 #'
 #' @return numerical vector of durations in hours
 #' @export tscale
 #'
 #' @examples
 #' tscale('M1')
+#' tscale('G1', nyears = 25)
 tscale = function(x, nyears = 30){
 
   num = suppressWarnings(as.integer(gsub("[^\\d]+", "", x, perl = TRUE)))
@@ -84,6 +125,13 @@ tscale = function(x, nyears = 30){
 
 }
 
+name_scales = function(scales){
+  num = suppressWarnings(as.integer(gsub("[^\\d]+", "", scales, perl = TRUE)))
+  if (any(is.na(num))) stop("Invalid scales specification - number of intervals must be provided. See ?decomp for details.")
+  let = gsub('day|days', 'D', scales) %>% gsub('month|months', 'M', .) %>% gsub('year|years', 'Y', .) %>% gsub("[\\d]+| ", '', ., perl = TRUE)
+  paste0(let, num)
+}
+
 #' Compare decomposed variables
 #'
 #' @param x List of decomposed variables to be compared
@@ -97,6 +145,9 @@ tscale = function(x, nyears = 30){
 #' @export compare
 #'
 #' @examples
+#' data(basin_PT)
+#' dobs = decomp(basin_PT[['obs_ctrl']])
+#'
 compare = function(x, compare_to, fun = mean, wet_int_only = TRUE, wet_int_thr = 0.1, exclude_below = 0.9){
 
   lst = c(x, COMPARE_TO = list(compare_to))
@@ -107,13 +158,13 @@ compare = function(x, compare_to, fun = mean, wet_int_only = TRUE, wet_int_thr =
   lst = lst[N >= exclude_below * (TS/24)]
   stat =
     if (wet_int_only){
-      lst[!(variable!='TAS' & value<= wet_int_thr), .(value = fun(value)), by = .(variable, scale, TS, sub_scale, ID)]
+      lst[!(! variable  %in% getOption('additive_variables') & value<= wet_int_thr), .(value = fun(value)), by = .(variable, period, TS, sub_period, ID)]
     } else {
-      lst[, .(value = fun(value)), by = .(variable, scale, TS, sub_scale, ID)]
+      lst[, .(value = fun(value)), by = .(variable, period, TS, sub_period, ID)]
     }
-  cstat = dcast.data.table(stat, variable + scale + TS + sub_scale ~ ID)
+  cstat = dcast.data.table(stat, variable + period + TS + sub_period ~ ID)
   stat = melt(cstat, measure.vars = names(x), variable.name = 'comp')
-  stat[, .(DIF = dif(value, COMPARE_TO, variable[1])), by = .(variable, scale, TS, sub_scale, comp)]
+  stat[, .(DIF = dif(value, COMPARE_TO, variable[1])), by = .(variable, period, TS, sub_period, comp)]
 
 }
 
@@ -144,7 +195,7 @@ vcompare = function(x, fun = cor, wet_int_only = TRUE, wet_int_thr = 0.1, exclud
   B = list()
   for (i in 1:nrow(map)){
     yy = dcast(lst[ID == map[i, TYP] & N >= exclude_below * (TS/24), ], ... ~ variable, value.var = 'value')
-    cy = yy[, .(ID = map[i, TYP], V1 = map[i, V1], V2 = map[i, V2], TS = tscale(scale), value = fun(eval(parse(text = map[i, V1])),  eval(parse(text = map[i, V2]))), VARS = map[i, paste(V1, V2, sep = ' x ')]), by = .(scale, sub_scale) ]
+    cy = yy[, .(ID = map[i, TYP], V1 = map[i, V1], V2 = map[i, V2], TS = tscale(period), value = fun(eval(parse(text = map[i, V1])),  eval(parse(text = map[i, V2]))), VARS = map[i, paste(V1, V2, sep = ' x ')]), by = .(period, sub_period) ]
     B[[i]] = cy
   }
 
@@ -157,7 +208,7 @@ vcompare = function(x, fun = cor, wet_int_only = TRUE, wet_int_thr = 0.1, exclud
 #' Convenience function for calculation of quantiles
 #'
 #' @param p Specification of the quantile
-#' @param ... other arguments passed to \code{quantile}
+#' @param ... other arguments passed to \code{\link{quantile}}
 #'
 #' @return function calculating the p-th quantile
 #' @export Q
@@ -167,7 +218,7 @@ Q = function(p, ...){
   function(x)quantile(x, p, ...)
 }
 
-
+#' @export
 run_bil = function(dta, b = NULL, vars = 'RM'){
   if (is.null(b)) {b = bil.new(type = 'd', data = dta[, .(DTM, P = PR, T = TAS)]) } else {
     bil.set.values(b, dta[, .(DTM, P = PR, T = TAS)])
@@ -178,30 +229,7 @@ run_bil = function(dta, b = NULL, vars = 'RM'){
   d
 }
 
-correct = function(x, y, z = copy(y), fun = correct, ...){
-
-  mx = melt(x, id.vars = 'DTM', value.name = 'obs')
-  my = melt(y, id.vars = 'DTM', value.name = 'sim')
-  mz = melt(z, id.vars = 'DTM', value.name = 'pred')
-  m = mx[my, on = c('DTM', 'variable')]
-
-  mon = 1
-  v = 'PR'
-  for (v in m[, unique(variable)]){
-    for (mon in 1:12){
-      f = m[variable==v & month(DTM) == mon, fitQmap(obs, sim, method = 'QUANT', wet.day = v == 'PR', qstep = .001)]
-      mz[variable==v & month(DTM) == mon , cor:=doQmap(pred, f)]
-    }
-  }
-
-  copy(dcast(mz[, .(DTM, variable, cor)], DTM ~ variable, value.var = 'cor'))
-}
-
-# correct = function(x, y, z, var, ...){
-#   fi = fitQmap(x, y, method= 'QUANT', wet.day = var == 'PR', ...)
-#   doQmap(z, fi, ...)
-# }
-
+#' @export
 month2sea = function(dtm, year_starts){
   i = ((1:12-1) + month(as.Date('1970-01-01') + year_starts)) %% 12
   i[i==0] = 12
@@ -212,6 +240,7 @@ month2sea = function(dtm, year_starts){
   id[i]
 }
 
+#' @export
 sscale2sea = function(sub_scale, year_starts){
   i = ((1:12-1) + month(as.Date('1970-01-01') + year_starts)) %% 12
   i[i==0] = 12
