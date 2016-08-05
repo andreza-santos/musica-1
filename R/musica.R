@@ -16,8 +16,21 @@
 NULL
 
 
-options('additive_variables' = 'TAS')
+.onLoad <- function(libname, pkgname) {
+  op <- options()
+  op.musica <- list(
+    'additive_variables' = 'TAS'
+  )
+  toset <- !(names(op.musica) %in% names(op))
+  if(any(toset)) options(op.musica[toset])
 
+  invisible()
+}
+
+
+
+
+#' @export
 dif = function(x, y, variable){
   if (variable %in% getOption('additive_variables')) return(x-y)
   r = x/y
@@ -25,11 +38,48 @@ dif = function(x, y, variable){
   return(r)
 }
 
+#' @export
 rev_dif = function(x, y, variable){
   if (variable %in% getOption('additive_variables')) return(x+y)
   r = x*y
   #r[y==0] = 0
   return(r)
+}
+
+#' @export
+rev_difv = function(x, v){
+  if (v %in% getOption('additive_variables')) {return(sum(x))} else {return(prod(x))}
+
+}
+
+#' @export
+prob = function(x){
+  (rank(x)-.3) / (length(x)+.4)
+}
+
+#' @export
+vprod = function(x, variable, ...){
+  if (variable %in% getOption('additive_variables')) return(sum(x, ...)) else (return(prod(x, ...)))
+}
+
+#' @export
+period2code = function(periods){
+  num = suppressWarnings(as.integer(gsub("[^\\d]+", "", periods, perl = TRUE)))
+  if (any(is.na(num))) stop("Invalid scales specification - number of intervals must be provided. See ?decomp for details.")
+  let = gsub('day|days', 'D', periods) %>% gsub('month|months', 'M', .) %>% gsub('year|years', 'Y', .) %>% gsub("[\\d]+| ", '', ., perl = TRUE)
+  paste0(let, num)
+}
+
+
+code2period = function(code){
+
+  num = suppressWarnings(as.integer(gsub("[^\\d]+", "", code, perl = TRUE)))
+  per = gsub("[\\d]+| ", '', code, perl = TRUE) %>% gsub('Y', 'year', .) %>% gsub('M', 'month', .) %>% gsub('D', 'day', .)
+
+  out = paste(num, per)
+  names(out) = code
+  out[code %in% c('G0', 'G1')] = '0'
+  out
 }
 
 
@@ -62,13 +112,20 @@ rev_dif = function(x, y, variable){
 #' str(basin_PT)
 #' basin_PT[['obs_ctrl']]
 #' dobs = decomp(basin_PT[['obs_ctrl']], scales = c('1 year', '1 month', '1 day'))
-decomp = function(x, year_starts = months(0), periods = c('1 year', '6 months', '3 months', '1 month', '15 days', '1 day'), agg_by = quarter){
+decomp = function(x, year_starts = months(0), periods = c('1 year', '6 months', '3 months', '1 month', '15 days', '1 day'), agg_by = quarter, full_return = FALSE, remove_incomplete = TRUE){
 
-  if (!all(grepl('year|month|day', periods))) stop("scales argument must be specified using 'year', 'month', 'day' keywords only. See ?decomp for details.")
-  names(periods) = name_scales(periods)
+  if (!all(grepl('year|month|day', periods))) stop("periods argument must be specified using 'year', 'month', 'day' keywords only. See ?decomp for details.")
+  names(periods) = period2code(periods)
   x = copy(x)
+
   # shift for arbitrary year start (climatological, hydrological etc.)
   x[, cDTM := as.IDate(DTM %m-% year_starts)]
+
+  if (remove_incomplete){
+    x[, N:=.N, by = .(year(cDTM))]
+    x = x[N>364]
+    x[, N:=NULL]
+  }
 
   for (i in 1:length(periods)){
     bby = if (i>1) {names(periods)[1:(i-1)]} else {NULL}
@@ -81,8 +138,15 @@ decomp = function(x, year_starts = months(0), periods = c('1 year', '6 months', 
 
   R = list()
   for (i in 0:length(periods)){
+
     bby = if (i>0) {names(periods)[i]} else {'G1'}
-    R[[i+1]] = mo[,  .(period = bby, value = mean(value), sub_period = unique(agg_by(cDTM)), period_pos = unique(prse), N = .N), by = .(variable, prse = eval(parse(text = bby)))]
+    ab = agg_by
+    #if ((identical(agg_by, quarter) & (tscale(bby) <= tscale('M3'))) | (identical(agg_by, month) & (tscale(bby) <= tscale('M1')))) {agg_by} else {function(dtm){1}}
+    R[[i+1]] = if (!full_return) {
+      mo[,  .(period = bby, value = mean(value), sub_period = unique(ab(cDTM)), period_pos = unique(prse), N = .N), by = .(variable, prse = eval(parse(text = bby)))]
+    } else {
+      mo[,  .(dDTM = DTM, period = bby, value = mean(value), sub_period = (ab(cDTM)), period_pos = unique(prse), N = .N), by = .(variable, prse = eval(parse(text = bby)))]
+    }
 
     }
 
@@ -90,8 +154,13 @@ decomp = function(x, year_starts = months(0), periods = c('1 year', '6 months', 
   R[, TS:= tscale(period)]
   setnames(R, 'prse', 'DTM')
   R[, DTM := as.IDate(DTM %m+% year_starts)]
-  R[, period_pos := as.IDate(period_pos %m+% year_starts)] # NEVYHODIT ? DTM == period_pos
+  #R[, period_pos := as.IDate(period_pos %m+% year_starts)] # NEVYHODIT ? DTM == period_pos
+  R[, period_pos := as.IDate(DTM) + ifelse(period!='G1', tscale(period)/24/2, 0)]
   #R[, excl:= N < 0.9 * (TS/24)]
+  #if (year_starts < months(0) ) {return(R[year(DTM)!=min(year(DTM))])}
+
+  #R[, DUPL:=duplicated(value), ]
+
   copy(R)
 
 }
@@ -125,12 +194,12 @@ tscale = function(x, nyears = 30){
 
 }
 
-name_scales = function(scales){
-  num = suppressWarnings(as.integer(gsub("[^\\d]+", "", scales, perl = TRUE)))
-  if (any(is.na(num))) stop("Invalid scales specification - number of intervals must be provided. See ?decomp for details.")
-  let = gsub('day|days', 'D', scales) %>% gsub('month|months', 'M', .) %>% gsub('year|years', 'Y', .) %>% gsub("[\\d]+| ", '', ., perl = TRUE)
-  paste0(let, num)
-}
+# name_scales = function(scales){
+#   num = suppressWarnings(as.integer(gsub("[^\\d]+", "", scales, perl = TRUE)))
+#   if (any(is.na(num))) stop("Invalid scales specification - number of intervals must be provided. See ?decomp for details.")
+#   let = gsub('day|days', 'D', scales) %>% gsub('month|months', 'M', .) %>% gsub('year|years', 'Y', .) %>% gsub("[\\d]+| ", '', ., perl = TRUE)
+#   paste0(let, num)
+# }
 
 #' Compare decomposed variables
 #'
@@ -158,7 +227,7 @@ compare = function(x, compare_to, fun = mean, wet_int_only = TRUE, wet_int_thr =
   lst = lst[N >= exclude_below * (TS/24)]
   stat =
     if (wet_int_only){
-      lst[!(! variable  %in% getOption('additive_variables') & value<= wet_int_thr), .(value = fun(value)), by = .(variable, period, TS, sub_period, ID)]
+      lst[!(! variable  %in% getOption('additive_variables') & value<= wet_int_thr) , .(value = fun(value)), by = .(variable, period, TS, sub_period, ID)]
     } else {
       lst[, .(value = fun(value)), by = .(variable, period, TS, sub_period, ID)]
     }
@@ -242,11 +311,35 @@ month2sea = function(dtm, year_starts){
 
 #' @export
 sscale2sea = function(sub_scale, year_starts){
+
   i = ((1:12-1) + month(as.Date('1970-01-01') + year_starts)) %% 12
   i[i==0] = 12
+  if (length(unique(sub_scale)) == 12) return( (c('DJF', 'DJF', 'MAM', 'MAM', 'MAM', 'JJA', 'JJA', 'JJA', 'SON', 'SON', 'SON', 'DJF')[i])[sub_scale]  )
+
   id = c('J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N' , 'D')[i]
   id = c(paste0(id[1:3], collapse = ''), paste0(id[1:3+3], collapse = ''), paste0(id[1:3+6], collapse = ''), paste0(id[1:3+9], collapse = ''))
   # i = month(dtm %m-% year_starts)#((month(dtm)-1) + month(as.Date('1970-01-01') + year_starts)) %% 12
   # i[i==0] = 12
   id[sub_scale]
 }
+
+#' @export
+period2code = function(periods){
+  num = suppressWarnings(as.integer(gsub("[^\\d]+", "", periods, perl = TRUE)))
+  if (any(is.na(num))) stop("Invalid scales specification - number of intervals must be provided. See ?decomp for details.")
+  let = gsub('day|days', 'D', periods) %>% gsub('month|months', 'M', .) %>% gsub('year|years', 'Y', .) %>% gsub("[\\d]+| ", '', ., perl = TRUE)
+  paste0(let, num)
+}
+
+#' @export
+code2period = function(code){
+
+  num = suppressWarnings(as.integer(gsub("[^\\d]+", "", code, perl = TRUE)))
+  per = gsub("[\\d]+| ", '', code, perl = TRUE) %>% gsub('Y', 'year', .) %>% gsub('M', 'month', .) %>% gsub('D', 'day', .)
+
+  out = paste(num, per)
+  names(out) = code
+  out[code %in% c('G0', 'G1')] = '0'
+  out
+}
+

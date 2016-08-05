@@ -5,7 +5,8 @@
 \title{Decomposition of time-series}
 \usage{
 decomp(x, year_starts = months(0), periods = c("1 year", "6 months",
-  "3 months", "1 month", "15 days", "1 day"), agg_by = quarter)
+  "3 months", "1 month", "15 days", "1 day"), agg_by = quarter,
+  full_return = FALSE, remove_incomplete = TRUE)
 }
 \arguments{
 \item{x}{data.table with columns \code{DTM} (date), \code{variable} and \code{value}. Any number of variables are in principle allowed.}
