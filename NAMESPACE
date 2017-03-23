@@ -3,6 +3,7 @@
 export(Q)
 export(code2period)
 export(compare)
+export(dcompare)
 export(decomp)
 export(dif)
 export(month2sea)

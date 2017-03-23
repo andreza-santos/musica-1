@@ -18,7 +18,7 @@ compare(x, compare_to, fun = mean, wet_int_only = TRUE, wet_int_thr = 0.1,
 
 \item{wet_int_thr}{Numeric value specifying the minimum depth to be considered wet}
 
-\item{exclude_below}{Some of the intervals might not be of required length, e.g. D10 interval may have less than 10 days available. The \code{exclude_below} argument controls the minimum fraction of the interval that has to be available in order to be considered in the summary statistics.}
+\item{exclude_below}{Some of the intervals might not be of required length, e.g. D10 interval may have less than 10 days available. The \code{exclude_below} argument controls the minimum fraction of the interval that has to be available in order to be considered in the summary statistics. Set to 0 for monthly data.}
 }
 \value{
 data.table summarizing the differences with columns:

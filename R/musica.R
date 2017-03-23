@@ -124,7 +124,8 @@ prob = function(x){
 #' @param period The periods over which the averages will be calculated, see Details
 #' @param agg_by Function for specification of the period (season, month) to be additionaly included in output, see Details
 #' @param full_return (logical) Should the average be repeated for each scale along with original time series? Default is FALSE (e.g. for M1 only monthly and not daily time series is returned)
-#' @param remove_incomplete Should the incomplete years be removed from results? Default is TRUE
+#' @param remove_incomplete Should the incomplete years be removed from results? Default is TRUE. For use with monthly data always set to FALSE.
+#' @param year_starts Indication of the start of the year - determines how the months will be grouped into the seasons. Note that the sub_period output variable is with respect to the \code{year_starts}
 #' @details The original time series in daily time step is decomposed into series of averages ove periods specified in \code{periods} argument using letter codes `D` - day(s), `M` - month(s), `Y` - year(s) followed by number corresponding to number of periods and `G1` the overall mean. The periods must be given in order from longest to shortest, the overall mean is always included (and needs not to be specified in \code{period}). Shorter periods are always identified within the closest longer periods, i.e. each shorter period is included in exactly one longer period. As a result, the averages may be calculated over shorter periods than specified. This is due to varying length of "month" and "year" periods. The actual length used for averaging is included in the output. To make further assessment of the decomposed objects easier, indicator of period within the year (e.g. quarter or month) as specified by \code{agg_by} argument is included in the output.
 #'
 #'@return data.table with variables:
@@ -145,10 +146,10 @@ prob = function(x){
 #' str(basin_PT)
 #' basin_PT[['obs_ctrl']]
 #' dobs = decomp(basin_PT[['obs_ctrl']], period = c('1 year', '1 month', '1 day'))
-decomp = function(x, period = c('Y1', 'M6', 'M3', 'M1', 'D15', 'D1'), agg_by = quarter, full_return = FALSE, remove_incomplete = TRUE){
+decomp = function(x, period = c('Y1', 'M6', 'M3', 'M1', 'D15', 'D1'), agg_by = quarter, full_return = FALSE, remove_incomplete = TRUE, year_starts = months(2)){
 
   periods = code2period(period)
-  year_starts = months(0)
+  #year_starts = months(0)
   if (!all(grepl('year|month|day', periods))) stop("periods argument must be specified using 'year', 'month', 'day' keywords only. See ?decomp for details.")
   names(periods) = period2code(periods)
   x = copy(x)
@@ -212,8 +213,8 @@ tscale = function(x, nyears = 30){
   num = suppressWarnings(as.integer(gsub("[^\\d]+", "", x, perl = TRUE)))
   xx = gsub('G', 'year ',  x)
   xx = gsub('Y', 'year ', xx)
-  xx = gsub('M', 'month ', xx)
   xx = gsub('D', 'day ', xx)
+  xx = gsub('M', 'month ', xx)
   xx[grepl('G', x)] = gsub(1, nyears, xx[grepl('G', x)])
 
   xs = strsplit(xx, ' ')
@@ -232,7 +233,7 @@ tscale = function(x, nyears = 30){
 #' @param fun Function used for comparison
 #' @param wet_int_only (logical) Should only the wet intervals be considered?
 #' @param wet_int_thr Numeric value specifying the minimum depth to be considered wet
-#' @param exclude_below Some of the intervals might not be of required length, e.g. D10 interval may have less than 10 days available. The \code{exclude_below} argument controls the minimum fraction of the interval that has to be available in order to be considered in the summary statistics.
+#' @param exclude_below Some of the intervals might not be of required length, e.g. D10 interval may have less than 10 days available. The \code{exclude_below} argument controls the minimum fraction of the interval that has to be available in order to be considered in the summary statistics. Set to 0 for monthly data.
 #'
 #' @return data.table summarizing the differences with columns:
 #'\describe{
@@ -296,7 +297,7 @@ compare = function(x, compare_to, fun = mean, wet_int_only = TRUE, wet_int_thr =
 #'  \item{TS}{averaging length in hours}
 #'  \item{sub_period}{indication of the aggregating scale specified by \code{agg_by} argument}
 #'  \item{comp}{factor indicating the data sets from \code{x} with labels given by \code{names(x)}}
-#'  \item{DIF}{distance between data sets from \code{x} and \code{compare_to}. Distance is measured as difference for variables included in \code{getOption('additive_variables')}, i.e. temperature (\code{TAS}) by default, and as a ratio for other variables, see \code{\link{dif}}}
+#'  \item{value}{value of \code{fun}}
 #'}
 #'
 #' @export vcompare
@@ -544,4 +545,79 @@ cut.Date = function (x, breaks, labels = NULL, start.on.monday = TRUE, right = F
     levels(res) <- as.character(if (is.numeric(breaks)) x[!duplicated(res)] else breaks[-length(breaks)])
   }
   res
+}
+
+
+#' Compare distribution function of variables
+#'
+#' @param x List of decomposed objects
+#' @param compare_to
+#' @param p
+#' @param wet_int_only (logical) Should only the wet intervals be considered?
+#' @param wet_int_thr Numeric value specifying the minimum depth to be consider wet
+#' @param exclude_below Some of the intervals might not be of required length, e.g. D10 interval may have less than 10 days available. The \code{exclude_below} argument controls the minimum fraction of the interval that has to be available in order to be considered in the summary statistics.
+#'
+#' @return data.table summarizing the relation with columns:
+#'\describe{
+#'  \item{variable}{factor indicating the variable}
+#'  \item{period}{specification of the averaging length with `D` - day(s), `M` - month(s), `Y` - year(s) and `G1` - the overall mean }
+#'  \item{TS}{averaging length in hours}
+#'  \item{sub_period}{indication of the aggregating scale specified by \code{agg_by} argument}
+#'  \item{comp}{factor indicating the data sets from \code{x} with labels given by \code{names(x)}}
+#'  \item{DIF}{distance between quantiles of \code{x} and \code{compare_to}. Distance is measured as difference for variables included in \code{getOption('additive_variables')}, i.e. temperature (\code{TAS}) by default, and as a ratio for other variables, see \code{\link{dif}}}
+#'}
+#' @export dcompare
+#'
+#' @examples
+#' library(ggplot2)
+#' data(basin_PT)
+#' \dontrun{
+#' dobs = decomp(basin_PT[['obs_ctrl']])
+#' dctrl = decomp(basin_PT[['sim_ctrl']])
+#' d = dcompare(x = list(CTRL = dctrl), compare_to = dobs)
+#' ggplot(d[variable=='TAS' & period!='G1']) +
+#'   geom_line(aes(x = p, y = DIF, col = comp)) +
+#'   facet_grid(sub_period~period, scale = 'free') +
+#'   theme(legend.position = 'top', axis.text.x = element_text(angle = 90, vjust = .5))
+#' }
+dcompare = function(x, compare_to, p = seq(0, 1, .01), wet_int_only = TRUE, wet_int_thr = 0.1, exclude_below = 0.9){
+
+  lst = c(x, COMPARE_TO = list(compare_to))
+  for (i in 1:length(lst)){
+    lst[[i]][, ID:=names(lst)[i]]
+  }
+  lst = do.call(rbind, lst)
+  lst = lst[N >= exclude_below * (TS/24)]
+  stat =
+    if (wet_int_only){
+      lst[!(! variable  %in% getOption('additive_variables') & value<= wet_int_thr) , .(value = quantile(value, p), p), by = .(variable, period, TS, sub_period, ID)]
+    } else {
+      lst[, .(value = quantile(value, p), p), by = .(variable, period, TS, sub_period, ID)]
+    }
+  cstat = dcast.data.table(stat, variable + period + TS + sub_period + p~ ID)
+  stat = melt(cstat, measure.vars = names(x), variable.name = 'comp')
+  stat[, .(DIF = dif(value, COMPARE_TO, variable[1])), by = .(variable, period, TS, sub_period, comp, p)]
+
+}
+
+#' Provides the letter code for months
+#'
+#' @param sub_scale Typically the \code{sub_period} variable from decomposed object
+#' @param year_starts The start of the year
+#'
+#' @return Vector of three-letter codes for seasons
+#' @details Typical workflow is to set \code{year_starts} in the decomp function e.g. to \code{months(-1)} or \code{months(2)}. These both result in climatological seasons (December-January-February - DJF, etc.). The latter in addition results in grouping of warm and cold seasons together at M6 scale. The sub_period field of the decomposed object is with respect to \code{year_starts}, i.e. when \code{year_starts = months(-1)} then \code{sub_period = 1} corresponds to December. To obtain the three-letter codes back, \code{sscale2sea} is used. The function is typically used for plotting.
+#' @export sscale2sea
+#'
+#' @examples
+#' sscale2sea(1:12, year_starts = months(-1))
+sscale2sea = function(sub_scale, year_starts = months(-1)){
+
+  i = ((1:12-1) + month(as.Date('1970-01-01') + year_starts)) %% 12
+  i[i==0] = 12
+  if (length(unique(sub_scale)) == 12) return( (c('DJF', 'DJF', 'MAM', 'MAM', 'MAM', 'JJA', 'JJA', 'JJA', 'SON', 'SON', 'SON', 'DJF')[i])[sub_scale]  )
+
+  id = c('J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N' , 'D')[i]
+  id = c(paste0(id[1:3], collapse = ''), paste0(id[1:3+3], collapse = ''), paste0(id[1:3+6], collapse = ''), paste0(id[1:3+9], collapse = ''))
+  id[sub_scale]
 }

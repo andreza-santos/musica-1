@@ -8,7 +8,7 @@
 \usage{
 month2sea(dtm, year_starts = months(0))
 
-sscale2sea(sub_scale, year_starts = months(0))
+sscale2sea(sub_scale, year_starts = months(-1))
 }
 \arguments{
 \item{dtm}{a \code{Date} object}

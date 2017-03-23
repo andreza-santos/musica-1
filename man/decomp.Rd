@@ -5,7 +5,7 @@
 \title{Decomposition of time-series}
 \usage{
 decomp(x, period = c("Y1", "M6", "M3", "M1", "D15", "D1"), agg_by = quarter,
-  full_return = FALSE, remove_incomplete = TRUE)
+  full_return = FALSE, remove_incomplete = TRUE, year_starts = months(2))
 }
 \arguments{
 \item{x}{data.table with columns \code{DTM} (date), \code{variable} and \code{value}. Any number of variables are in principle allowed.}
@@ -16,7 +16,9 @@ decomp(x, period = c("Y1", "M6", "M3", "M1", "D15", "D1"), agg_by = quarter,
 
 \item{full_return}{(logical) Should the average be repeated for each scale along with original time series? Default is FALSE (e.g. for M1 only monthly and not daily time series is returned)}
 
-\item{remove_incomplete}{Should the incomplete years be removed from results? Default is TRUE}
+\item{remove_incomplete}{Should the incomplete years be removed from results? Default is TRUE. For use with monthly data always set to FALSE.}
+
+\item{year_starts}{Indication of the start of the year - determines how the months will be grouped into the seasons. Note that the sub_period output variable is with respect to the \code{year_starts}}
 }
 \value{
 data.table with variables:
