@@ -1,0 +1,10 @@
+base
+data.table
+magrittr
+MASS
+fitdistrplus
+qmap
+lubridate
+gridExtra
+ggplot2
+musica

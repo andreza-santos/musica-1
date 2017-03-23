@@ -3,9 +3,9 @@
 \docType{package}
 \name{musica-package}
 \alias{musica-package}
-\title{musica - An R package for multiscale climate model assessment}
+\title{An R package for multiscale climate model assessment}
 \description{
-The package provides functions for flexible assessment of climate model bias and changes at multiple time scales. See documentation for \code{\link{decomp}}, \code{\link{compare}} and \code{\link{vcompare}}.
+Contains functions for flexible assessment of climate model bias and changes at multiple time scales. See documentation for \code{\link{decomp}}, \code{\link{compare}} and \code{\link{vcompare}}. In addition, musica provides functions for multiscale transformations of time series (see \code{\link{msTrans_abs}} and \code{\link{msTrans_dif}})
 }
 \section{Package options}{
 

@@ -8,7 +8,7 @@ vcompare(x, fun = cor, wet_int_only = TRUE, wet_int_thr = 0.1,
   exclude_below = 0.9)
 }
 \arguments{
-\item{x}{Decomposed object}
+\item{x}{List of decomposed objects}
 
 \item{fun}{Function to sumarize dependence (like \code{cor}, \code{cov})}
 
@@ -19,9 +19,33 @@ vcompare(x, fun = cor, wet_int_only = TRUE, wet_int_thr = 0.1,
 \item{exclude_below}{Some of the intervals might not be of required length, e.g. D10 interval may have less than 10 days available. The \code{exclude_below} argument controls the minimum fraction of the interval that has to be available in order to be considered in the summary statistics.}
 }
 \value{
-data.table summarizing the relation
+data.table summarizing the relation with columns:
+\describe{
+ \item{variable}{factor indicating the variable}
+ \item{period}{specification of the averaging length with `D` - day(s), `M` - month(s), `Y` - year(s) and `G1` - the overall mean }
+ \item{TS}{averaging length in hours}
+ \item{sub_period}{indication of the aggregating scale specified by \code{agg_by} argument}
+ \item{comp}{factor indicating the data sets from \code{x} with labels given by \code{names(x)}}
+ \item{DIF}{distance between data sets from \code{x} and \code{compare_to}. Distance is measured as difference for variables included in \code{getOption('additive_variables')}, i.e. temperature (\code{TAS}) by default, and as a ratio for other variables, see \code{\link{dif}}}
+}
 }
 \description{
 Assess the relations between two decomposed variables
+}
+\details{
+\code{vcompare} compares the relation between all pairs of variables included in \code{x}, typically precipitation and temperature, but other variables may be included also (e.g. runoff).
+}
+\examples{
+library(ggplot2)
+data(basin_PT)
+\dontrun{
+dobs = decomp(basin_PT[['obs_ctrl']])
+dctrl = decomp(basin_PT[['sim_ctrl']])
+d = vcompare(x = list(OBS = dobs, CTRL = dctrl), fun = cov)
+ggplot(d[period!='G1']) +
+ geom_line(aes(x = TS, y = value, col = factor(sub_period))) +
+ facet_grid(VARS~ID) +
+ scale_x_log10()
+ }
 }
 

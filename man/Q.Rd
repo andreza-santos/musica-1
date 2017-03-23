@@ -15,6 +15,11 @@ Q(p, ...)
 function calculating the p-th quantile
 }
 \description{
-Convenience function for calculation of quantiles
+The typical use is in \code{\link{compare}} to avoid anonymous functions in specification of its \code{fun} argument.
+}
+\examples{
+q90 = Q(.9)
+class(q90)
+q90(rnorm(10))
 }
 

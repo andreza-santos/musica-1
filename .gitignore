@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+.archive
 musica.Rproj
 readme.Rmd
 testing/*.*

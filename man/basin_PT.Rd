@@ -14,7 +14,7 @@ Each data.table contains 3 variables:
 \describe{
   \item{DTM}{date}
   \item{PR}{precipitation, mm}
-  \item{TAS}{temperature, °C}
+  \item{TAS}{temperature, degrees C}
 }}
 \usage{
 basin_PT

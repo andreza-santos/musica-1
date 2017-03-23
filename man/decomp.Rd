@@ -4,18 +4,19 @@
 \alias{decomp}
 \title{Decomposition of time-series}
 \usage{
-decomp(x, year_starts = months(0), periods = c("1 year", "6 months",
-  "3 months", "1 month", "15 days", "1 day"), agg_by = quarter,
+decomp(x, period = c("Y1", "M6", "M3", "M1", "D15", "D1"), agg_by = quarter,
   full_return = FALSE, remove_incomplete = TRUE)
 }
 \arguments{
 \item{x}{data.table with columns \code{DTM} (date), \code{variable} and \code{value}. Any number of variables are in principle allowed.}
 
-\item{year_starts}{A Period object indicating the start of the year, e.g. \code{year_starts = -months(1)} results in climatological seasons}
-
-\item{periods}{The periods over which the averages will be calculated, see Details}
+\item{period}{The periods over which the averages will be calculated, see Details}
 
 \item{agg_by}{Function for specification of the period (season, month) to be additionaly included in output, see Details}
+
+\item{full_return}{(logical) Should the average be repeated for each scale along with original time series? Default is FALSE (e.g. for M1 only monthly and not daily time series is returned)}
+
+\item{remove_incomplete}{Should the incomplete years be removed from results? Default is TRUE}
 }
 \value{
 data.table with variables:
@@ -31,15 +32,15 @@ data.table with variables:
 }
 }
 \description{
-Enhance the input data.table with series of averages over the periods specified in the \code{periods} argument.
+Calculate series of averages over the periods specified in the \code{period} argument into the inpur data.table.
 }
 \details{
-The original time series in daily time step is decomposed into series of averages ove periods specified in \code{periods} argument using keywords "day", "month", "year" preceded by an integer and a space and optionally followed by "s" (the specification is further passed to \code{cut.Date}, see \code{\link{cut.Date}} for details). The periods must be given in order from longest to shortest, the overall mean is always included (and needs not to be included). Shorter periods are always identified within the closest longer periods, i.e. each shorter period is fully included in exactly one longer period. As a result, the averages may be calculated over shorter periods than specified. This is due to varying length of "month" and "year" periods. The actual length used for averaging is included in the output. To make further assessment of the decomposed objects easier, indicator of period within the year (e.g. quarter or month) as specified by \code{agg_by} argument is included in the output.
+The original time series in daily time step is decomposed into series of averages ove periods specified in \code{periods} argument using letter codes `D` - day(s), `M` - month(s), `Y` - year(s) followed by number corresponding to number of periods and `G1` the overall mean. The periods must be given in order from longest to shortest, the overall mean is always included (and needs not to be specified in \code{period}). Shorter periods are always identified within the closest longer periods, i.e. each shorter period is included in exactly one longer period. As a result, the averages may be calculated over shorter periods than specified. This is due to varying length of "month" and "year" periods. The actual length used for averaging is included in the output. To make further assessment of the decomposed objects easier, indicator of period within the year (e.g. quarter or month) as specified by \code{agg_by} argument is included in the output.
 }
 \examples{
 data(basin_PT)
 str(basin_PT)
 basin_PT[['obs_ctrl']]
-dobs = decomp(basin_PT[['obs_ctrl']], scales = c('1 year', '1 month', '1 day'))
+dobs = decomp(basin_PT[['obs_ctrl']], period = c('1 year', '1 month', '1 day'))
 }
 

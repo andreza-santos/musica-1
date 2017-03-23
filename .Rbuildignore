@@ -1,2 +1,9 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+.archive
+.git
+paper
+src
+testing
+vig_arch
+readme*

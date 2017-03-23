@@ -12,6 +12,6 @@
 #' \describe{
 #'   \item{DTM}{date}
 #'   \item{PR}{precipitation, mm}
-#'   \item{TAS}{temperature, °C}
+#'   \item{TAS}{temperature, degrees C}
 #' }
 "basin_PT"
